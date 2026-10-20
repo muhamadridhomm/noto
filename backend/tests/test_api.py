@@ -1,6 +1,7 @@
 import os
 import pytest
 import aiosqlite
+from unittest.mock import AsyncMock, patch
 from httpx import AsyncClient, ASGITransport
 from pathlib import Path
 
@@ -99,11 +100,12 @@ async def test_note_crud_and_fts_search():
 
 @pytest.mark.anyio
 async def test_ai_status():
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as client:
-        res = await client.get("/api/ai/status")
-        assert res.status_code == 200
-        data = res.json()
-        assert "default_provider" in data
-        assert "gemini_configured" in data
-        assert "ollama_available" in data
+    with patch("app.api.endpoints.ai.llm_service.check_ollama_status", new=AsyncMock(return_value=False)):
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            res = await client.get("/api/ai/status")
+    assert res.status_code == 200
+    data = res.json()
+    assert "default_provider" in data
+    assert "gemini_configured" in data
+    assert data["ollama_available"] is False
