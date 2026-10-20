@@ -1,0 +1,73 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-stone-50 text-stone-900 selection:bg-brand-100 selection:text-brand-900;
+  }
+}
+
+/* Custom minimal scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(160, 160, 160, 0.25);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(160, 160, 160, 0.45);
+}
+
+/* Markdown prose typography */
+.markdown-body h1 {
+  @apply text-2xl font-bold mt-4 mb-2 text-stone-900 border-b border-stone-200 pb-1;
+}
+
+.markdown-body h2 {
+  @apply text-xl font-semibold mt-4 mb-2 text-stone-800;
+}
+
+.markdown-body h3 {
+  @apply text-lg font-medium mt-3 mb-1 text-stone-800;
+}
+
+.markdown-body p {
+  @apply my-2 leading-relaxed text-stone-700;
+}
+
+.markdown-body ul {
+  @apply list-disc list-inside my-2 space-y-1 text-stone-700;
+}
+
+.markdown-body ol {
+  @apply list-decimal list-inside my-2 space-y-1 text-stone-700;
+}
+
+.markdown-body li {
+  @apply leading-relaxed;
+}
+
+.markdown-body blockquote {
+  @apply border-l-4 border-brand-500 pl-4 py-1 my-2 bg-stone-100/60 rounded-r text-stone-600 italic;
+}
+
+.markdown-body code {
+  @apply bg-stone-200/70 text-stone-800 px-1.5 py-0.5 rounded text-sm font-mono;
+}
+
+.markdown-body pre {
+  @apply bg-stone-900 text-stone-100 p-3 rounded-lg overflow-x-auto my-3 text-sm font-mono;
+}
+
+.markdown-body hr {
+  @apply my-4 border-stone-200;
+}
