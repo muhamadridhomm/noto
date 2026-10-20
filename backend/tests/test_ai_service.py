@@ -15,10 +15,13 @@ def test_system_prompt_builder():
     assert "professional" in prompt_tidy
 
 @pytest.mark.anyio
-async def test_ai_draft_streaming_endpoint():
+async def test_ai_draft_streaming_endpoint(monkeypatch):
+    async def fake_stream_draft(**_kwargs):
+        yield "# A test draft"
+
+    monkeypatch.setattr(llm_service, "stream_draft", fake_stream_draft)
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
-        # Request with mock provider (mock key set in env)
         payload = {
             "prompt": "Test meeting note",
             "context_content": "Drafting test",
@@ -29,3 +32,4 @@ async def test_ai_draft_streaming_endpoint():
         res = await client.post("/api/ai/draft", json=payload)
         assert res.status_code == 200
         assert "text/event-stream" in res.headers["content-type"]
+        assert "# A test draft" in res.text
