@@ -1,22 +1,25 @@
-# Noto — Local-First AI Notes
+# Noto — Local-First Notes & Planning Workspace
 
-Noto is a web app for organizing notes and using an AI assistant to draft or tidy them. AI changes are staged for review before the user chooses whether to save them. This portfolio copy contains no personal note database; it creates a fresh local database when run.
+Noto brings everyday notes and lightweight task planning into one local workspace. Its AI assistant can draft or tidy text, but suggestions stay in a review step until the user chooses to apply them.
 
 ## What it demonstrates
 
-- Folders, pinned and unfiled notes, search, and note editing.
-- A review step for AI-generated or tidied text before it is saved.
-- Optional Gemini and Ollama providers configured by the user.
-- A FastAPI backend with SQLite persistence and a Vue 3 frontend.
+- Organize notes in folders, pin important notes, keep unfiled notes, and search across content.
+- Capture checklists and tasks with groups, status, priority, and due dates; track milestones and review task history.
+- Start from reusable note and task templates, then export planning data as Excel or HTML.
+- Use a FastAPI backend with SQLite persistence and a Vue 3 interface.
+- Configure Gemini with a key supplied by the user, or use a local Ollama installation.
+- Keep AI-generated changes staged for human review before saving.
+
+This public edition contains application code and generic templates only. Personal note databases, employer-specific examples, credentials, and generated user data are excluded. The Firebase sync experiment is not included in this edition.
 
 ## Run locally
 
 Requirements: Python 3.10+, Node.js, and npm.
 
-1. In `backend`, create and activate a Python virtual environment, then install `requirements.txt`.
-2. Copy `backend/.env.example` to `backend/.env` and fill only the provider settings you choose. Leave secrets out of Git.
-3. Start the API from `backend` with `uvicorn app.main:app --reload --host 127.0.0.1 --port 8050`.
-4. In another terminal, run `npm install` and `npm run dev` from `frontend`.
-5. Open the local URL shown by Vite.
+1. From the project root, run `./start.sh --dev`.
+2. The script creates the backend virtual environment and installs dependencies if needed, then starts the API and Vite development server.
+3. Open the local URL printed by Vite; the FastAPI docs are available at `http://127.0.0.1:8050/docs`.
+4. To use Gemini, add `GEMINI_API_KEY` to `backend/.env`. For local generation, install Ollama and choose a model available on your machine.
 
-The database is created on the local machine and is excluded from Git. AI-provider availability and behavior depend on the user's own credentials or local Ollama installation.
+Local note and planning data is stored in SQLite and excluded from Git. AI provider availability depends on the user's own API key or local Ollama setup.

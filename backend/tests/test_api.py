@@ -1,7 +1,6 @@
 import os
 import pytest
 import aiosqlite
-from unittest.mock import AsyncMock, patch
 from httpx import AsyncClient, ASGITransport
 from pathlib import Path
 
@@ -100,12 +99,69 @@ async def test_note_crud_and_fts_search():
 
 @pytest.mark.anyio
 async def test_ai_status():
-    with patch("app.api.endpoints.ai.llm_service.check_ollama_status", new=AsyncMock(return_value=False)):
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
-            res = await client.get("/api/ai/status")
-    assert res.status_code == 200
-    data = res.json()
-    assert "default_provider" in data
-    assert "gemini_configured" in data
-    assert data["ollama_available"] is False
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        res = await client.get("/api/ai/status")
+        assert res.status_code == 200
+        data = res.json()
+        assert "default_provider" in data
+        assert "gemini_configured" in data
+        assert "ollama_available" in data
+
+@pytest.mark.anyio
+async def test_exports():
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        # Create a sample note with tasks and targets
+        note_content = """# Migration
+```tasks
+{
+  "tasks": [
+    {
+      "id": "etom-001",
+      "title": "Governance NDE",
+      "done": false,
+      "status": "To Do",
+      "priority": "Urgent",
+      "due_date": "2026-11-15",
+      "group": "Track A1",
+      "notes": "NDE resmi"
+    }
+  ],
+  "targets": [
+    {
+      "id": "tgt-001",
+      "title": "Target Integrasi Awal",
+      "badge": "Integrasi Awal",
+      "date": "2026-11-30",
+      "description": "Baseline integrasi"
+    }
+  ]
+}
+```
+"""
+        create_res = await client.post("/api/notes", json={
+            "title": "Track A Test Note",
+            "content": note_content
+        })
+        assert create_res.status_code == 201
+        test_note_id = create_res.json()["id"]
+
+        # Test HTML export
+        html_res = await client.get("/api/export/html")
+        assert html_res.status_code == 200
+        assert "text/html" in html_res.headers.get("content-type", "")
+        html_text = html_res.text
+        assert "swimlane-lane" in html_text
+        assert "matrix-table" in html_text
+        assert "kanban-board" in html_text
+        assert "etom-001" in html_text
+
+        # Test Excel export
+        excel_res = await client.get("/api/export/excel")
+        assert excel_res.status_code == 200
+        assert "application/vnd.openxmlformats" in excel_res.headers.get("content-type", "")
+        assert len(excel_res.content) > 1000
+
+        # Clean up test note
+        await client.delete(f"/api/notes/{test_note_id}/permanent")

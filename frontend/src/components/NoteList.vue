@@ -3,14 +3,25 @@
     <!-- List Header -->
     <div class="p-3 border-b border-stone-200/70 flex items-center justify-between">
       <div>
-        <h2 class="text-xs font-semibold text-stone-700 uppercase tracking-wider">
+        <h2 class="text-xs font-semibold uppercase tracking-wider" :class="isTrashMode ? 'text-rose-700' : 'text-stone-700'">
           {{ activeFolderName }}
         </h2>
         <span class="text-[11px] text-stone-400">
           {{ filteredNotes.length }} note{{ filteredNotes.length === 1 ? '' : 's' }}
         </span>
       </div>
+
+      <!-- Action: Empty Trash (if in trash) or New Note -->
       <button
+        v-if="isTrashMode && filteredNotes.length > 0"
+        @click="confirmEmptyTrash"
+        title="Empty all trash"
+        class="text-xs text-rose-600 hover:text-rose-800 hover:underline font-medium"
+      >
+        Empty Trash
+      </button>
+      <button
+        v-else-if="!isTrashMode"
         @click="handleNewNote"
         title="New Note in this view"
         class="text-stone-500 hover:text-stone-800 p-1 rounded-md hover:bg-stone-100 transition"
@@ -35,7 +46,7 @@
     <!-- Notes Scroll Area -->
     <div class="flex-1 overflow-y-auto divide-y divide-stone-100">
       <div v-if="filteredNotes.length === 0" class="p-6 text-center text-xs text-stone-400">
-        No notes found here. Click <span class="font-medium text-stone-600">+</span> to write one!
+        {{ isTrashMode ? 'Trash is empty.' : 'No notes found here. Click + to write one!' }}
       </div>
 
       <div
@@ -45,18 +56,38 @@
         class="group p-3 cursor-pointer transition text-left relative"
         :class="[
           notesStore.activeNoteId === note.id
-            ? 'bg-brand-50/60 border-l-2 border-brand-600'
+            ? isTrashMode ? 'bg-rose-50/60 border-l-2 border-rose-500' : 'bg-brand-50/60 border-l-2 border-brand-600'
             : 'hover:bg-stone-50/90'
         ]"
       >
         <div class="flex items-start justify-between gap-1 mb-1">
           <h3
             class="text-sm font-medium truncate flex-1"
-            :class="notesStore.activeNoteId === note.id ? 'text-brand-900 font-semibold' : 'text-stone-800'"
+            :class="notesStore.activeNoteId === note.id ? 'text-stone-900 font-semibold' : 'text-stone-800'"
           >
             {{ note.title || 'Untitled Note' }}
           </h3>
-          <div class="flex items-center gap-1 shrink-0">
+
+          <!-- Trash Actions (Restore / Delete Forever) -->
+          <div v-if="isTrashMode" class="flex items-center gap-1 shrink-0">
+            <button
+              @click.stop="notesStore.restoreNote(note.id)"
+              title="Restore Note"
+              class="text-stone-400 hover:text-emerald-700 p-1 rounded hover:bg-stone-200/60 transition"
+            >
+              <RotateCcw class="w-3.5 h-3.5" />
+            </button>
+            <button
+              @click.stop="confirmPermanentDelete(note)"
+              title="Delete Forever"
+              class="text-stone-400 hover:text-rose-600 p-1 rounded hover:bg-stone-200/60 transition"
+            >
+              <Trash2 class="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          <!-- Standard Actions (Pin / Move to Trash) -->
+          <div v-else class="flex items-center gap-1 shrink-0">
             <button
               @click.stop="notesStore.togglePin(note.id)"
               :title="note.is_pinned ? 'Unpin note' : 'Pin note'"
@@ -67,7 +98,7 @@
             </button>
             <button
               @click.stop="confirmDelete(note)"
-              title="Delete note"
+              title="Move to trash"
               class="p-0.5 text-stone-300 opacity-0 group-hover:opacity-100 hover:text-rose-600 transition"
             >
               <Trash2 class="w-3.5 h-3.5" />
@@ -80,7 +111,16 @@
         </p>
 
         <div class="mt-2 flex items-center justify-between text-[11px] text-stone-400 font-mono">
-          <span>{{ formatDate(note.updated_at) }}</span>
+          <div class="flex items-center gap-1.5">
+            <span>{{ formatDate(note.updated_at) }}</span>
+            <span
+              v-if="note.content && note.content.includes('```tasks')"
+              class="text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-200/80 px-1.5 py-0.5 rounded font-sans font-medium flex items-center gap-1"
+            >
+              <CheckSquare class="w-2.5 h-2.5 text-emerald-600" />
+              <span>Tasks</span>
+            </span>
+          </div>
           <span v-if="getFolderName(note.folder_id)" class="text-[10px] bg-stone-100 px-1.5 py-0.5 rounded text-stone-600 font-sans">
             {{ getFolderName(note.folder_id) }}
           </span>
@@ -93,52 +133,69 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useNotesStore } from '../stores/notes'
-import { Plus, Search, Pin, Trash2 } from 'lucide-vue-next'
+import { Plus, Search, Pin, Trash2, RotateCcw, CheckSquare } from 'lucide-vue-next'
 
 const notesStore = useNotesStore()
 const filterQuery = ref('')
 
+const isTrashMode = computed(() => notesStore.activeFolderId === 'trash')
+
 const activeFolderName = computed(() => {
   if (notesStore.activeFolderId === 'all') return 'All Notes'
+  if (notesStore.activeFolderId === 'tasks') return 'Tasks & Checklists'
+  if (notesStore.activeFolderId === 'trash') return 'Trash (Recycle Bin)'
   if (notesStore.activeFolderId === 'uncategorized') return 'Unfiled Notes'
-  const folder = notesStore.folders.find(f => f.id === notesStore.activeFolderId)
-  return folder ? folder.name : 'Notes'
+  const found = notesStore.folders.find(f => f.id === notesStore.activeFolderId)
+  return found ? found.name : 'Notes'
 })
 
 const filteredNotes = computed(() => {
-  let list = notesStore.currentFolderNotes
-  if (filterQuery.value.trim()) {
-    const q = filterQuery.value.toLowerCase()
-    list = list.filter(n => 
-      (n.title && n.title.toLowerCase().includes(q)) ||
-      (n.content && n.content.toLowerCase().includes(q))
-    )
-  }
-  return list
+  const source = isTrashMode.value ? notesStore.trashNotes : notesStore.currentFolderNotes
+  if (!filterQuery.value.trim()) return source
+  const q = filterQuery.value.toLowerCase()
+  return source.filter(n =>
+    n.title.toLowerCase().includes(q) ||
+    (n.content && n.content.toLowerCase().includes(q))
+  )
 })
 
 function getFolderName(folderId) {
-  if (!folderId) return null
-  const f = notesStore.folders.find(x => x.id === folderId)
-  return f ? f.name : null
+  if (!folderId) return ''
+  const folder = notesStore.folders.find(f => f.id === folderId)
+  return folder ? folder.name : ''
 }
 
 function handleNewNote() {
-  const folderId = notesStore.activeFolderId !== 'all' && notesStore.activeFolderId !== 'uncategorized'
+  const targetFolder = notesStore.activeFolderId !== 'all' && notesStore.activeFolderId !== 'uncategorized' && notesStore.activeFolderId !== 'tasks' && notesStore.activeFolderId !== 'trash'
     ? notesStore.activeFolderId
     : null
-  notesStore.createNote(folderId)
+  notesStore.createNote(targetFolder)
+}
+
+function confirmDelete(note) {
+  notesStore.deleteNote(note.id)
+}
+
+function confirmPermanentDelete(note) {
+  if (confirm(`Permanently delete "${note.title}"? This cannot be undone.`)) {
+    notesStore.permanentDeleteNote(note.id)
+  }
+}
+
+function confirmEmptyTrash() {
+  if (confirm('Permanently delete all items in trash?')) {
+    notesStore.emptyTrash()
+  }
 }
 
 function formatDate(dateStr) {
   if (!dateStr) return ''
   const d = new Date(dateStr)
-  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
-}
-
-async function confirmDelete(note) {
-  if (confirm(`Delete "${note.title || 'Untitled Note'}"?`)) {
-    await notesStore.deleteNote(note.id)
+  const now = new Date()
+  const isToday = d.toDateString() === now.toDateString()
+  if (isToday) {
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   }
+  return d.toLocaleDateString([], { month: 'short', day: 'numeric' })
 }
 </script>

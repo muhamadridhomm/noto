@@ -1,17 +1,26 @@
 <template>
   <aside class="w-64 bg-stone-100/90 border-r border-stone-200/80 flex flex-col h-full select-none">
     <!-- Workspace Brand Header -->
-    <div class="p-3.5 border-b border-stone-200/70 flex items-center justify-between">
+    <div class="p-3.5 border-b border-stone-200/70 flex items-center justify-between bg-stone-50/50">
       <div class="flex items-center gap-2.5">
-        <div class="w-7 h-7 rounded-lg bg-gradient-to-tr from-brand-600 to-indigo-500 text-white flex items-center justify-center font-bold text-sm shadow-sm">
-          N
+        <!-- Modern SVG Emblem -->
+        <div class="w-8 h-8 rounded-xl shadow-xs overflow-hidden shrink-0 flex items-center justify-center bg-gradient-to-br from-indigo-600 to-brand-600 p-0.5">
+          <img src="/noto-logo.svg" alt="Noto Logo" class="w-full h-full object-contain rounded-[10px]" />
         </div>
-        <span class="font-semibold text-stone-800 tracking-tight text-base">Noto</span>
+        <div class="flex flex-col">
+          <div class="flex items-center gap-1.5">
+            <span class="font-bold text-stone-900 tracking-tight text-sm font-sans">Noto</span>
+            <span class="text-[9px] font-mono px-1.5 py-0.2 rounded-full bg-brand-50 text-brand-700 border border-brand-200 font-semibold">
+              AI
+            </span>
+          </div>
+          <span class="text-[10px] text-stone-400 font-medium tracking-tight">Notes & Roadmap Hub</span>
+        </div>
       </div>
-      <button 
-        @click="aiStore.isSettingsOpen = true" 
+      <button
+        @click="aiStore.isSettingsOpen = true"
         title="Settings"
-        class="text-stone-400 hover:text-stone-700 p-1 rounded-md hover:bg-stone-200/60 transition"
+        class="text-stone-400 hover:text-stone-700 p-1.5 rounded-lg hover:bg-stone-200/60 transition"
       >
         <Settings class="w-4 h-4" />
       </button>
@@ -26,6 +35,26 @@
         <Plus class="w-4 h-4" />
         <span>New Note</span>
       </button>
+
+      <div class="grid grid-cols-2 gap-1.5">
+        <button
+          @click="openMasterTasks"
+          class="flex items-center justify-center gap-1.5 py-1.5 px-2 bg-white hover:bg-stone-50 border border-stone-200 rounded-md text-xs font-medium text-stone-700 transition shadow-2xs"
+          title="Combined Master Timeline & Tasks Hub"
+        >
+          <CalendarDays class="w-3.5 h-3.5 text-brand-600" />
+          <span>Timeline Hub</span>
+        </button>
+
+        <button
+          @click="notesStore.isTemplatesOpen = true"
+          class="flex items-center justify-center gap-1.5 py-1.5 px-2 bg-white hover:bg-stone-50 border border-stone-200 rounded-md text-xs font-medium text-stone-700 transition shadow-2xs"
+          title="Open template gallery"
+        >
+          <LayoutTemplate class="w-3.5 h-3.5 text-amber-600" />
+          <span>Templates</span>
+        </button>
+      </div>
 
       <button
         @click="aiStore.openDrawer('new_note')"
@@ -52,8 +81,8 @@
         @click="selectFolder('all')"
         :class="[
           'w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-sm transition text-left',
-          notesStore.activeFolderId === 'all' 
-            ? 'bg-stone-200/80 text-stone-900 font-medium' 
+          notesStore.activeFolderId === 'all'
+            ? 'bg-stone-200/80 text-stone-900 font-medium'
             : 'text-stone-600 hover:bg-stone-200/50 hover:text-stone-800'
         ]"
       >
@@ -63,11 +92,27 @@
       </button>
 
       <button
+        @click="selectFolder('tasks')"
+        :class="[
+          'w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-sm transition text-left',
+          notesStore.activeFolderId === 'tasks'
+            ? 'bg-emerald-50 text-emerald-900 font-semibold border border-emerald-200/60'
+            : 'text-stone-600 hover:bg-stone-200/50 hover:text-stone-800'
+        ]"
+      >
+        <CheckSquare class="w-4 h-4 text-emerald-600" />
+        <span class="flex-1 truncate">Tasks & Checklists</span>
+        <span class="text-xs text-emerald-700 font-mono">
+          {{ notesStore.notes.filter(n => n.content && n.content.includes('```tasks')).length }}
+        </span>
+      </button>
+
+      <button
         @click="selectFolder('uncategorized')"
         :class="[
           'w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-sm transition text-left',
-          notesStore.activeFolderId === 'uncategorized' 
-            ? 'bg-stone-200/80 text-stone-900 font-medium' 
+          notesStore.activeFolderId === 'uncategorized'
+            ? 'bg-stone-200/80 text-stone-900 font-medium'
             : 'text-stone-600 hover:bg-stone-200/50 hover:text-stone-800'
         ]"
       >
@@ -75,6 +120,23 @@
         <span class="flex-1 truncate">Unfiled Notes</span>
         <span class="text-xs text-stone-400 font-mono">
           {{ notesStore.notes.filter(n => !n.folder_id).length }}
+        </span>
+      </button>
+
+      <!-- Trash / Recycle Bin Navigation Item -->
+      <button
+        @click="selectFolder('trash')"
+        :class="[
+          'w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-sm transition text-left',
+          notesStore.activeFolderId === 'trash'
+            ? 'bg-rose-50 text-rose-900 font-medium border border-rose-200/60'
+            : 'text-stone-500 hover:bg-stone-200/50 hover:text-stone-800'
+        ]"
+      >
+        <Trash2 class="w-4 h-4 text-stone-400" />
+        <span class="flex-1 truncate">Trash</span>
+        <span class="text-xs text-stone-400 font-mono">
+          {{ notesStore.trashNotes.length }}
         </span>
       </button>
     </div>
@@ -112,8 +174,8 @@
           :key="folder.id"
           class="group flex items-center justify-between rounded-md px-2.5 py-1.5 text-sm transition cursor-pointer"
           :class="[
-            notesStore.activeFolderId === folder.id 
-              ? 'bg-stone-200/80 text-stone-900 font-medium' 
+            notesStore.activeFolderId === folder.id
+              ? 'bg-stone-200/80 text-stone-900 font-medium'
               : 'text-stone-600 hover:bg-stone-200/50 hover:text-stone-800'
           ]"
           @click="selectFolder(folder.id)"
@@ -145,7 +207,7 @@
         <span class="w-2 h-2 rounded-full" :class="providerStatusColor"></span>
         <span class="truncate capitalize">{{ aiStore.activeProvider }} AI active</span>
       </div>
-      <button 
+      <button
         @click="aiStore.isSettingsOpen = true"
         class="text-stone-400 hover:text-stone-700 underline text-[11px]"
       >
@@ -156,11 +218,11 @@
 </template>
 
 <script setup>
-import { ref, computed, nextTick } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useNotesStore } from '../stores/notes'
 import { useAIStore } from '../stores/ai'
 import {
-  Plus, Sparkles, Search, Files, FileText, Folder, Trash2, Settings
+  Plus, Sparkles, Search, Files, FileText, Folder, Trash2, Settings, CheckSquare, LayoutTemplate, CalendarDays
 } from 'lucide-vue-next'
 
 const notesStore = useNotesStore()
@@ -169,6 +231,10 @@ const aiStore = useAIStore()
 const isCreatingFolder = ref(false)
 const newFolderName = ref('')
 const newFolderInput = ref(null)
+
+onMounted(() => {
+  notesStore.fetchTrashNotes()
+})
 
 const providerStatusColor = computed(() => {
   if (aiStore.activeProvider === 'gemini') {
@@ -179,11 +245,20 @@ const providerStatusColor = computed(() => {
 
 function selectFolder(id) {
   notesStore.activeFolderId = id
-  notesStore.fetchNotes(id)
+  if (id === 'trash') {
+    notesStore.fetchTrashNotes()
+  } else {
+    notesStore.fetchNotes(id)
+  }
+}
+
+function openMasterTasks() {
+  notesStore.fetchAllTasks()
+  notesStore.isMasterTasksOpen = true
 }
 
 function handleNewNote() {
-  const targetFolder = notesStore.activeFolderId !== 'all' && notesStore.activeFolderId !== 'uncategorized'
+  const targetFolder = notesStore.activeFolderId !== 'all' && notesStore.activeFolderId !== 'uncategorized' && notesStore.activeFolderId !== 'tasks' && notesStore.activeFolderId !== 'trash'
     ? notesStore.activeFolderId
     : null
   notesStore.createNote(targetFolder)

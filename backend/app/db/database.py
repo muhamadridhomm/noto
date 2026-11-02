@@ -23,7 +23,7 @@ async def init_db():
     async with aiosqlite.connect(db_path) as db:
         await db.execute("PRAGMA foreign_keys = ON;")
         await db.execute("PRAGMA journal_mode = WAL;")
-        
+
         # Folders Table
         await db.execute("""
         CREATE TABLE IF NOT EXISTS folders (
@@ -44,7 +44,35 @@ async def init_db():
             title TEXT NOT NULL,
             content TEXT DEFAULT '',
             is_pinned BOOLEAN DEFAULT 0,
+            is_deleted BOOLEAN DEFAULT 0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        """)
+
+        # Migration: Add is_deleted column if missing
+        cursor = await db.execute("PRAGMA table_info(notes);")
+        columns = [row[1] for row in await cursor.fetchall()]
+        if "is_deleted" not in columns:
+            await db.execute("ALTER TABLE notes ADD COLUMN is_deleted BOOLEAN DEFAULT 0;")
+
+        # Note History Table (Snapshots for Time Machine / Version Rollback)
+        await db.execute("""
+        CREATE TABLE IF NOT EXISTS note_history (
+            id TEXT PRIMARY KEY,
+            note_id TEXT REFERENCES notes(id) ON DELETE CASCADE,
+            title TEXT NOT NULL,
+            content TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        """)
+        await db.execute("CREATE INDEX IF NOT EXISTS idx_note_history_note_id ON note_history(note_id);")
+
+        # App Settings Table (Persistent backup of user configurations)
+        await db.execute("""
+        CREATE TABLE IF NOT EXISTS app_settings (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
         """)

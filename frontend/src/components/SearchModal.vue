@@ -49,8 +49,9 @@
         >
           <div class="flex items-center justify-between mb-1">
             <h4 class="text-sm font-semibold truncate">{{ item.title || 'Untitled Note' }}</h4>
-            <span class="text-[10px] font-mono bg-stone-100 text-stone-600 px-1.5 py-0.5 rounded">
-              📁 {{ item.folder_name }}
+            <span class="text-[10px] font-mono bg-stone-100 text-stone-600 px-1.5 py-0.5 rounded flex items-center gap-1">
+              <Folder class="w-2.5 h-2.5 text-stone-400" />
+              <span>{{ item.folder_name }}</span>
             </span>
           </div>
 
@@ -69,7 +70,7 @@
 import { ref, watch, nextTick } from 'vue'
 import { useAIStore } from '../stores/ai'
 import { useNotesStore } from '../stores/notes'
-import { Search, Loader2 } from 'lucide-vue-next'
+import { Search, Loader2, Folder } from 'lucide-vue-next'
 
 const aiStore = useAIStore()
 const notesStore = useNotesStore()

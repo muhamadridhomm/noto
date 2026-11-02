@@ -31,26 +31,36 @@
         <!-- Mode Tabs -->
         <div>
           <label class="block text-[11px] font-semibold text-stone-400 uppercase tracking-wider mb-1.5">Action Mode</label>
-          <div class="grid grid-cols-2 gap-1.5 p-1 bg-stone-100 rounded-lg text-xs font-medium text-stone-600">
+          <div class="grid grid-cols-3 gap-1 p-1 bg-stone-100 rounded-lg text-xs font-medium text-stone-600">
             <button
               @click="aiStore.mode = 'new_note'"
               :class="[
-                'py-1.5 px-2 rounded-md transition text-center flex items-center justify-center gap-1.5',
+                'py-1.5 px-1.5 rounded-md transition text-center flex flex-col sm:flex-row items-center justify-center gap-1',
                 aiStore.mode === 'new_note' ? 'bg-white text-stone-900 shadow-xs font-semibold' : 'hover:text-stone-900'
               ]"
             >
-              <FilePlus class="w-3.5 h-3.5 text-brand-600" />
-              <span>Draft New Note</span>
+              <FilePlus class="w-3.5 h-3.5 text-brand-600 shrink-0" />
+              <span class="truncate">Draft</span>
             </button>
             <button
               @click="aiStore.openDrawer('tidy_note')"
               :class="[
-                'py-1.5 px-2 rounded-md transition text-center flex items-center justify-center gap-1.5',
+                'py-1.5 px-1.5 rounded-md transition text-center flex flex-col sm:flex-row items-center justify-center gap-1',
                 aiStore.mode === 'tidy_note' ? 'bg-white text-stone-900 shadow-xs font-semibold' : 'hover:text-stone-900'
               ]"
             >
-              <Wand2 class="w-3.5 h-3.5 text-indigo-600" />
-              <span>Tidy Active Note</span>
+              <Wand2 class="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+              <span class="truncate">Tidy</span>
+            </button>
+            <button
+              @click="aiStore.openDrawer('extract_tasks')"
+              :class="[
+                'py-1.5 px-1.5 rounded-md transition text-center flex flex-col sm:flex-row items-center justify-center gap-1',
+                aiStore.mode === 'extract_tasks' ? 'bg-white text-stone-900 shadow-xs font-semibold' : 'hover:text-stone-900'
+              ]"
+            >
+              <CheckSquare class="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+              <span class="truncate">Extract Tasks</span>
             </button>
           </div>
         </div>
@@ -65,8 +75,8 @@
               @click="aiStore.tone = t"
               :class="[
                 'text-xs px-2.5 py-1 rounded-full border transition capitalize',
-                aiStore.tone === t 
-                  ? 'bg-brand-50 border-brand-300 text-brand-700 font-medium' 
+                aiStore.tone === t
+                  ? 'bg-brand-50 border-brand-300 text-brand-700 font-medium'
                   : 'bg-white border-stone-200 text-stone-600 hover:border-stone-300'
               ]"
             >
@@ -192,16 +202,16 @@ const currentSuggestions = computed(() => {
   if (aiStore.mode === 'tidy_note') {
     return [
       'Clean up formatting & fix spelling',
-      'Format action items as checkboxes',
+      'Convert action items to ClickUp checklist table',
       'Turn into a concise executive summary',
       'Organize with clear headers and bullet points'
     ]
   }
   return [
+    'Buatkan tabel ceklist tugas ClickUp dengan status & prioritas',
     'Meeting notes with team on product launch',
-    'Weekly project sprint priorities & tasks',
-    'Brainstorming ideas for website redesign',
-    'Research summary of modern web frameworks'
+    'Weekly project sprint checklist with deadlines',
+    'Brainstorming ideas for website redesign'
   ]
 })
 

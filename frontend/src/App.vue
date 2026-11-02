@@ -20,6 +20,15 @@
 
     <!-- Settings & AI Config Modal -->
     <SettingsModal />
+
+    <!-- Template Gallery Modal -->
+    <TemplateModal />
+
+    <!-- Master Tasks Aggregator Modal -->
+    <MasterTasksModal />
+
+    <!-- Version History (Time Machine) Modal -->
+    <HistoryModal />
   </div>
 </template>
 
@@ -35,6 +44,9 @@ import AIDrawer from './components/AIDrawer.vue'
 import StagingModal from './components/StagingModal.vue'
 import SearchModal from './components/SearchModal.vue'
 import SettingsModal from './components/SettingsModal.vue'
+import TemplateModal from './components/TemplateModal.vue'
+import MasterTasksModal from './components/MasterTasksModal.vue'
+import HistoryModal from './components/HistoryModal.vue'
 
 const notesStore = useNotesStore()
 const aiStore = useAIStore()
@@ -67,7 +79,7 @@ function handleGlobalKeydown(e) {
 
 onMounted(async () => {
   window.addEventListener('keydown', handleGlobalKeydown)
-  
+
   await notesStore.fetchFolders()
   await notesStore.fetchNotes()
   await aiStore.fetchAIStatus()

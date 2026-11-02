@@ -44,10 +44,13 @@ export const useAIStore = defineStore('ai', () => {
 
   function openDrawer(newMode = 'new_note', contextContent = '') {
     mode.value = newMode
+    const notesStore = useNotesStore()
     if (newMode === 'tidy_note') {
-      const notesStore = useNotesStore()
       originalText.value = contextContent || (notesStore.activeNote ? notesStore.activeNote.content : '')
-      prompt.value = prompt.value || 'Clean up formatting, fix typos, and organize with clear headers.'
+      prompt.value = 'Clean up formatting, fix typos, and organize with clear headers.'
+    } else if (newMode === 'extract_tasks') {
+      originalText.value = contextContent || (notesStore.activeNote ? notesStore.activeNote.content : '')
+      prompt.value = 'Extract all actionable tasks and decisions into a structured ClickUp checklist table with status and priority.'
     } else {
       originalText.value = ''
     }
@@ -140,8 +143,8 @@ export const useAIStore = defineStore('ai', () => {
 
   async function approveAndSave(destinationFolderId = null) {
     const notesStore = useNotesStore()
-    
-    if (mode.value === 'tidy_note' && notesStore.activeNote) {
+
+    if ((mode.value === 'tidy_note' || mode.value === 'extract_tasks') && notesStore.activeNote) {
       // User approved updating the existing note
       notesStore.activeNote.content = draftText.value
       if (draftTitle.value && notesStore.activeNote.title === 'Untitled Note') {

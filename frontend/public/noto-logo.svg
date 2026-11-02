@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <!-- Background Gradient: Deep Radiant Indigo to Violet -->
+    <linearGradient id="notoBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4338ca" />
+      <stop offset="45%" stop-color="#4f46e5" />
+      <stop offset="100%" stop-color="#7c3aed" />
+    </linearGradient>
+
+    <!-- Vertical Pillar Gradients -->
+    <linearGradient id="pillarLeft" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="100%" stop-color="#e0e7ff" />
+    </linearGradient>
+
+    <linearGradient id="pillarRight" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="100%" stop-color="#f1f5f9" />
+    </linearGradient>
+
+    <!-- Diagonal Folding Ribbon -->
+    <linearGradient id="diagGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#c7d2fe" />
+      <stop offset="50%" stop-color="#818cf8" />
+      <stop offset="100%" stop-color="#6366f1" />
+    </linearGradient>
+
+    <!-- AI Sparkle Gradient: Radiant Emerald & Cyan -->
+    <linearGradient id="sparkleGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#10b981" />
+      <stop offset="100%" stop-color="#06b6d4" />
+    </linearGradient>
+
+    <!-- Drop Shadows -->
+    <filter id="appShadow" x="-15%" y="-15%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="18" stdDeviation="24" flood-color="#1e1b4b" flood-opacity="0.4" />
+    </filter>
+    <filter id="foldShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="2" dy="8" stdDeviation="12" flood-color="#1e1b4b" flood-opacity="0.3" />
+    </filter>
+    <filter id="badgeShadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#0f172a" flood-opacity="0.25" />
+    </filter>
+  </defs>
+
+  <!-- Base Squircle with App Shadow -->
+  <rect x="32" y="32" width="448" height="448" rx="116" fill="url(#notoBg)" filter="url(#appShadow)" />
+
+  <!-- Subtle Edge Rim Light -->
+  <rect x="33.5" y="33.5" width="445" height="445" rx="114.5" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-opacity="0.28" />
+
+  <!-- Soft Ambient Glow within icon -->
+  <circle cx="256" cy="180" r="150" fill="#ffffff" opacity="0.07" />
+
+  <!-- Modern Geometric "N" Monogram -->
+  <!-- Left Pillar -->
+  <rect x="136" y="132" width="62" height="248" rx="20" fill="url(#pillarLeft)" filter="url(#foldShadow)" />
+
+  <!-- Diagonal Folding Ribbon connecting Left to Right -->
+  <path
+    d="M140 144 L372 368 C382 378 376 388 360 388 L330 388 C320 388 310 382 304 374 L132 178 C124 168 128 156 140 144 Z"
+    fill="url(#diagGrad)"
+    filter="url(#foldShadow)"
+  />
+
+  <!-- Clean Diagonal Main Stroke -->
+  <line x1="148" y1="146" x2="364" y2="366" stroke="url(#pillarLeft)" stroke-width="56" stroke-linecap="round" filter="url(#foldShadow)" />
+
+  <!-- Right Pillar (Foreground Fold) -->
+  <rect x="314" y="132" width="62" height="248" rx="20" fill="url(#pillarRight)" filter="url(#foldShadow)" />
+
+  <!-- Top-Right AI Sparkle Badge (ClickUp Milestone & Copilot) -->
+  <g transform="translate(382, 126)" filter="url(#badgeShadow)">
+    <circle cx="0" cy="0" r="34" fill="#ffffff" />
+    <circle cx="0" cy="0" r="31" fill="#f8fafc" />
+    <!-- 4-point Diamond Sparkle -->
+    <path
+      d="M0 -22 C0 -6 6 0 22 0 C6 0 0 6 0 22 C0 6 -6 0 -22 0 C-6 0 0 -6 0 -22 Z"
+      fill="url(#sparkleGrad)"
+    />
+  </g>
+</svg>

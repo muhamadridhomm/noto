@@ -5,10 +5,46 @@ from ..core.config import settings
 
 class LLMService:
     def __init__(self):
+        self.reload_config()
+
+    def reload_config(self):
+        """Reloads active credentials and settings from settings object."""
         self.gemini_key = settings.GEMINI_API_KEY
         self.gemini_model = settings.GEMINI_MODEL
         self.ollama_url = settings.OLLAMA_BASE_URL.rstrip('/')
         self.ollama_model = settings.OLLAMA_MODEL
+
+    async def test_gemini_connection(self, api_key: Optional[str] = None, model: Optional[str] = None) -> tuple[bool, str]:
+        """Tests validity of Gemini API key by sending a minimal ping request."""
+        key = (api_key if api_key is not None else self.gemini_key).strip()
+        mod = (model if model is not None else self.gemini_model).strip() or "gemini-2.5-flash"
+        if not key:
+            return False, "Gemini API key is empty."
+
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{mod}:generateContent?key={key}"
+        payload = {
+            "contents": [
+                {"role": "user", "parts": [{"text": "Ping"}]}
+            ],
+            "generationConfig": {
+                "maxOutputTokens": 5
+            }
+        }
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                res = await client.post(url, json=payload, headers={"Content-Type": "application/json"})
+                if res.status_code == 200:
+                    return True, f"Successfully connected to Gemini API ({mod})!"
+
+                try:
+                    err_json = res.json()
+                    err_msg = err_json.get("error", {}).get("message", res.text[:200])
+                except Exception:
+                    err_msg = res.text[:200]
+                return False, f"Gemini Error ({res.status_code}): {err_msg}"
+        except Exception as e:
+            return False, f"Connection error: {str(e)}"
+
 
     async def check_ollama_status(self) -> bool:
         """Check if local Ollama server is reachable."""
@@ -26,7 +62,7 @@ class LLMService:
             "Never include meta-commentary like 'Sure, here is your note:' or 'Hope this helps!'. "
             "Output ONLY the note content itself."
         )
-        
+
         tone_instructions = {
             "concise": "Keep the content very concise, punchy, and minimal. Focus on core bullet points.",
             "professional": "Use professional, structured phrasing with clear executive summary and action items.",
@@ -34,20 +70,40 @@ class LLMService:
             "balanced": "Maintain a natural, organized, and clean tone with clear headers and bullet points where helpful."
         }.get(tone, "Maintain a clean, organized markdown format.")
 
+        clickup_instructions = (
+            "\n\nIf the user requests a task list, checklist table, project action items, or ClickUp-style tracker, "
+            "embed an interactive ClickUp task table using the ```tasks code fence:\n"
+            "```tasks\n"
+            "[\n"
+            '  {"id": "t1", "title": "Task description", "done": false, "status": "To Do", "priority": "High", "due_date": "YYYY-MM-DD"},\n'
+            '  {"id": "t2", "title": "Second task", "done": true, "status": "Done", "priority": "Normal", "due_date": ""}\n'
+            "]\n"
+            "```\n"
+            "Valid statuses: 'To Do', 'In Progress', 'In Review', 'Done', 'Blocked'.\n"
+            "Valid priorities: 'Urgent', 'High', 'Normal', 'Low'.\n"
+        )
+
         if mode == "new_note":
             return (
                 f"{base}\n\nTask: Draft a fresh, structured note based on the user's prompt or rough ideas. "
                 f"Include a top-level `# Note Title`, followed by organized sections, key takeaways, and action items if applicable. "
-                f"Tone instruction: {tone_instructions}"
+                f"Tone instruction: {tone_instructions}{clickup_instructions}"
             )
         elif mode == "tidy_note":
             return (
                 f"{base}\n\nTask: Tidy, refine, and improve the user's existing note or text while strictly preserving their factual meaning and intent. "
                 f"Fix spelling, grammar, flow, and formatting into clean Markdown with clear headings and lists. "
-                f"Tone instruction: {tone_instructions}"
+                f"Tone instruction: {tone_instructions}{clickup_instructions}"
+            )
+        elif mode == "extract_tasks":
+            return (
+                f"{base}\n\nTask: Analyze the provided note, meeting transcript, or discussion text and extract all concrete action items, tasks, and follow-ups. "
+                f"Preserve the summary of context, then immediately provide the extracted action items inside an interactive ClickUp tasks code fence:\n"
+                f"{clickup_instructions}\n"
+                "Assign realistic priorities ('Urgent', 'High', 'Normal', 'Low') and status ('To Do' or 'In Progress')."
             )
         else:
-            return f"{base}\n\nTask: Follow the user's instructions to refine or create note content.\nTone instruction: {tone_instructions}"
+            return f"{base}\n\nTask: Follow the user's instructions to refine or create note content.\nTone instruction: {tone_instructions}{clickup_instructions}"
 
     async def stream_gemini(self, prompt: str, system_prompt: str) -> AsyncGenerator[str, None]:
         """Streams text chunks from Google Gemini API using REST SSE streaming."""
@@ -142,7 +198,7 @@ class LLMService:
         """Unified streaming interface selecting between Gemini and Ollama."""
         selected_provider = provider or settings.DEFAULT_PROVIDER
         system_prompt = self.build_system_prompt(mode, tone)
-        
+
         full_user_input = prompt
         if context_content and context_content.strip():
             full_user_input = (

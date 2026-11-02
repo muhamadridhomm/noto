@@ -4,24 +4,37 @@ import { ref, computed } from 'vue'
 export const useNotesStore = defineStore('notes', () => {
   const folders = ref([])
   const notes = ref([])
+  const trashNotes = ref([])
   const activeNoteId = ref(null)
   const activeNote = ref(null)
-  const activeFolderId = ref('all') // 'all' | 'uncategorized' | folderId
+  const activeFolderId = ref('all') // 'all' | 'tasks' | 'trash' | 'uncategorized' | folderId
   const isLoading = ref(false)
   const saveStatus = ref('saved') // 'saved' | 'saving' | 'error'
   let saveTimeout = null
 
+  // Modals & Panels State
+  const isMasterTasksOpen = ref(false)
+  const isHistoryOpen = ref(false)
+  const isTemplatesOpen = ref(false)
+  const noteHistory = ref([])
+  const allMasterTasks = ref([])
+  const allMasterTargets = ref([])
+
   // Computed
   const currentFolderNotes = computed(() => {
     if (activeFolderId.value === 'all') return notes.value
+    if (activeFolderId.value === 'trash') return trashNotes.value
     if (activeFolderId.value === 'uncategorized') {
       return notes.value.filter(n => !n.folder_id)
+    }
+    if (activeFolderId.value === 'tasks') {
+      return notes.value.filter(n => n.content && n.content.includes('```tasks'))
     }
     return notes.value.filter(n => n.folder_id === activeFolderId.value)
   })
 
   const pinnedNotes = computed(() => {
-    return notes.value.filter(n => n.is_pinned)
+    return notes.value.filter(n => n.is_pinned && !n.is_deleted)
   })
 
   // Folders API
@@ -111,9 +124,20 @@ export const useNotesStore = defineStore('notes', () => {
     }
   }
 
+  async function fetchTrashNotes() {
+    try {
+      const res = await fetch('/api/notes/trash')
+      if (res.ok) {
+        trashNotes.value = await res.json()
+      }
+    } catch (e) {
+      console.error('Failed to fetch trash notes:', e)
+    }
+  }
+
   async function selectNote(id) {
     activeNoteId.value = id
-    const match = notes.value.find(n => n.id === id)
+    const match = notes.value.find(n => n.id === id) || trashNotes.value.find(n => n.id === id)
     if (match) {
       activeNote.value = { ...match }
     } else {
@@ -133,7 +157,7 @@ export const useNotesStore = defineStore('notes', () => {
       const payload = {
         title: title || 'Untitled Note',
         content: content || '',
-        folder_id: folderId && folderId !== 'all' && folderId !== 'uncategorized' ? folderId : null
+        folder_id: folderId && folderId !== 'all' && folderId !== 'tasks' && folderId !== 'trash' && folderId !== 'uncategorized' ? folderId : null
       }
       const res = await fetch('/api/notes', {
         method: 'POST',
@@ -145,12 +169,43 @@ export const useNotesStore = defineStore('notes', () => {
         notes.value.unshift(newNote)
         activeNoteId.value = newNote.id
         activeNote.value = { ...newNote }
-        await fetchFolders() // Refresh note counts
+        await fetchFolders()
         return newNote
       }
     } catch (e) {
       console.error('Failed to create note:', e)
     }
+  }
+
+  async function createChecklistNote(folderId = null, title = 'Project Task Checklist') {
+    const defaultTasks = [
+      {
+        id: `task-${Date.now()}-1`,
+        title: "Define core deliverables and milestones",
+        done: false,
+        status: "In Progress",
+        priority: "Urgent",
+        due_date: new Date().toISOString().slice(0, 10)
+      },
+      {
+        id: `task-${Date.now()}-2`,
+        title: "Review checklist with stakeholders",
+        done: false,
+        status: "To Do",
+        priority: "High",
+        due_date: ""
+      },
+      {
+        id: `task-${Date.now()}-3`,
+        title: "Final sign-off and retrospective",
+        done: false,
+        status: "To Do",
+        priority: "Normal",
+        due_date: ""
+      }
+    ]
+    const content = `# ${title}\n\nTrack progress, deadlines, and deliverables below:\n\n\`\`\`tasks\n${JSON.stringify(defaultTasks, null, 2)}\n\`\`\``
+    return await createNote(folderId, title, content)
   }
 
   function queueSaveNote(updates) {
@@ -193,10 +248,15 @@ export const useNotesStore = defineStore('notes', () => {
     }
   }
 
+  // Soft delete (moves to trash)
   async function deleteNote(id) {
     try {
       const res = await fetch(`/api/notes/${id}`, { method: 'DELETE' })
       if (res.ok || res.status === 204) {
+        const deleted = notes.value.find(n => n.id === id)
+        if (deleted) {
+          trashNotes.value.unshift({ ...deleted, is_deleted: true })
+        }
         notes.value = notes.value.filter(n => n.id !== id)
         if (activeNoteId.value === id) {
           activeNoteId.value = notes.value.length ? notes.value[0].id : null
@@ -206,6 +266,55 @@ export const useNotesStore = defineStore('notes', () => {
       }
     } catch (e) {
       console.error('Failed to delete note:', e)
+    }
+  }
+
+  // Restore note from trash
+  async function restoreNote(id) {
+    try {
+      const res = await fetch(`/api/notes/${id}/restore`, { method: 'POST' })
+      if (res.ok) {
+        const restored = await res.json()
+        trashNotes.value = trashNotes.value.filter(n => n.id !== id)
+        notes.value.unshift(restored)
+        activeNoteId.value = restored.id
+        activeNote.value = { ...restored }
+        await fetchFolders()
+      }
+    } catch (e) {
+      console.error('Failed to restore note:', e)
+    }
+  }
+
+  // Permanent purge
+  async function permanentDeleteNote(id) {
+    try {
+      const res = await fetch(`/api/notes/${id}/permanent`, { method: 'DELETE' })
+      if (res.ok || res.status === 204) {
+        trashNotes.value = trashNotes.value.filter(n => n.id !== id)
+        if (activeNoteId.value === id) {
+          activeNoteId.value = trashNotes.value.length ? trashNotes.value[0].id : null
+          activeNote.value = trashNotes.value.length ? { ...trashNotes.value[0] } : null
+        }
+      }
+    } catch (e) {
+      console.error('Failed to purge note:', e)
+    }
+  }
+
+  // Empty trash
+  async function emptyTrash() {
+    try {
+      const res = await fetch('/api/notes/empty-trash', { method: 'POST' })
+      if (res.ok) {
+        trashNotes.value = []
+        if (activeFolderId.value === 'trash') {
+          activeNote.value = null
+          activeNoteId.value = null
+        }
+      }
+    } catch (e) {
+      console.error('Failed to empty trash:', e)
     }
   }
 
@@ -224,9 +333,55 @@ export const useNotesStore = defineStore('notes', () => {
     })
   }
 
+  // History / Time Machine API
+  async function fetchHistory(noteId) {
+    try {
+      const res = await fetch(`/api/notes/${noteId}/history`)
+      if (res.ok) {
+        noteHistory.value = await res.json()
+      }
+    } catch (e) {
+      console.error('Failed to fetch history:', e)
+    }
+  }
+
+  async function restoreHistory(noteId, historyId) {
+    try {
+      const res = await fetch(`/api/notes/${noteId}/restore-history/${historyId}`, { method: 'POST' })
+      if (res.ok) {
+        const restored = await res.json()
+        activeNote.value = { ...restored }
+        const idx = notes.value.findIndex(n => n.id === noteId)
+        if (idx !== -1) notes.value[idx] = { ...restored }
+        isHistoryOpen.value = false
+      }
+    } catch (e) {
+      console.error('Failed to restore history snapshot:', e)
+    }
+  }
+
+  // Master Tasks & Targets Aggregator API
+  async function fetchAllTasks() {
+    try {
+      const [resTasks, resTargets] = await Promise.all([
+        fetch('/api/notes/tasks/all'),
+        fetch('/api/notes/targets/all')
+      ])
+      if (resTasks.ok) {
+        allMasterTasks.value = await resTasks.json()
+      }
+      if (resTargets.ok) {
+        allMasterTargets.value = await resTargets.json()
+      }
+    } catch (e) {
+      console.error('Failed to fetch all tasks and targets:', e)
+    }
+  }
+
   return {
     folders,
     notes,
+    trashNotes,
     activeNoteId,
     activeNote,
     activeFolderId,
@@ -234,16 +389,30 @@ export const useNotesStore = defineStore('notes', () => {
     saveStatus,
     currentFolderNotes,
     pinnedNotes,
+    isMasterTasksOpen,
+    isHistoryOpen,
+    isTemplatesOpen,
+    noteHistory,
+    allMasterTasks,
+    allMasterTargets,
     fetchFolders,
     createFolder,
     updateFolder,
     deleteFolder,
     fetchNotes,
+    fetchTrashNotes,
     selectNote,
     createNote,
+    createChecklistNote,
     queueSaveNote,
     saveNote,
     deleteNote,
-    togglePin
+    restoreNote,
+    permanentDeleteNote,
+    emptyTrash,
+    togglePin,
+    fetchHistory,
+    restoreHistory,
+    fetchAllTasks
   }
 })

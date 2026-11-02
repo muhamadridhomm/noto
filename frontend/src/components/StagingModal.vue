@@ -74,9 +74,16 @@
         <!-- Tab 1: Formatted Markdown Preview -->
         <div
           v-if="activeTab === 'preview'"
-          class="bg-white p-6 rounded-lg border border-stone-200/80 shadow-xs markdown-body min-h-full"
-          v-html="renderedDraft"
-        ></div>
+          class="bg-white p-6 rounded-lg border border-stone-200/80 shadow-xs min-h-full"
+        >
+          <div v-if="renderedDraftClean" class="markdown-body" v-html="renderedDraftClean"></div>
+          <div v-if="hasDraftTasks" class="mt-4">
+            <ChecklistTable
+              :model-value="draftTasks"
+              @change="onDraftTasksChange"
+            />
+          </div>
+        </div>
 
         <!-- Tab 2: Direct Edit Textarea -->
         <div v-else-if="activeTab === 'edit'" class="h-full flex flex-col">
@@ -138,7 +145,7 @@
           >
             <option :value="null">Unfiled Notes</option>
             <option v-for="f in notesStore.folders" :key="f.id" :value="f.id">
-              📁 {{ f.name }}
+              {{ f.name }}
             </option>
           </select>
         </div>
@@ -170,25 +177,56 @@ import { ref, computed } from 'vue'
 import { useAIStore } from '../stores/ai'
 import { useNotesStore } from '../stores/notes'
 import { marked } from 'marked'
+import ChecklistTable from './ChecklistTable.vue'
 import { CheckCircle2, X, Folder, Check } from 'lucide-vue-next'
 
 const aiStore = useAIStore()
 const notesStore = useNotesStore()
 
 const activeTab = ref('preview') // 'preview' | 'edit' | 'diff'
-const selectedFolderId = ref(notesStore.activeFolderId !== 'all' && notesStore.activeFolderId !== 'uncategorized' ? notesStore.activeFolderId : null)
+const selectedFolderId = ref(notesStore.activeFolderId !== 'all' && notesStore.activeFolderId !== 'uncategorized' && notesStore.activeFolderId !== 'tasks' ? notesStore.activeFolderId : null)
 const tidyDestination = ref('replace_active')
 
-const renderedDraft = computed(() => {
+const TASKS_REGEX = /```tasks\s*([\s\S]*?)\s*```/
+
+const draftTasks = computed(() => {
+  const match = (aiStore.draftText || '').match(TASKS_REGEX)
+  if (match) {
+    try {
+      const data = JSON.parse(match[1])
+      if (Array.isArray(data)) return data
+    } catch (e) {}
+  }
+  return []
+})
+
+const hasDraftTasks = computed(() => {
+  return TASKS_REGEX.test(aiStore.draftText || '')
+})
+
+const renderedDraftClean = computed(() => {
   if (!aiStore.draftText) {
     return '<p class="text-stone-300 italic">No draft content...</p>'
   }
+  const stripped = aiStore.draftText.replace(TASKS_REGEX, '').trim()
+  if (!stripped && hasDraftTasks.value) return ''
+  if (!stripped) return '<p class="text-stone-300 italic">Empty draft text...</p>'
   try {
-    return marked.parse(aiStore.draftText)
+    return marked.parse(stripped)
   } catch (e) {
-    return `<pre>${aiStore.draftText}</pre>`
+    return `<pre>${stripped}</pre>`
   }
 })
+
+function onDraftTasksChange(newTasks) {
+  const jsonStr = JSON.stringify(newTasks, null, 2)
+  const taskBlock = `\`\`\`tasks\n${jsonStr}\n\`\`\``
+  if (TASKS_REGEX.test(aiStore.draftText)) {
+    aiStore.draftText = aiStore.draftText.replace(TASKS_REGEX, taskBlock)
+  } else {
+    aiStore.draftText = aiStore.draftText.trim() ? `${aiStore.draftText.trim()}\n\n${taskBlock}` : taskBlock
+  }
+}
 
 function handleDiscard() {
   aiStore.discardDraft()
